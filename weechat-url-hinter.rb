@@ -44,7 +44,7 @@ end
 
 def weechat_init
   Weechat.register('weechat-url-hinter', 'Kengo Tateish', '0.1', 'MIT License', 'Open an url in the weechat buffer to type a hint', '', '')
-  Weechat.hook_command('url_hinter', 'description', 'args', 'args_description', '', 'copywin_cmd', '');
+  Weechat.hook_command('url_hinter', 'description', 'args', 'args_description', '', 'launch_url_hinter', '');
   return Weechat::WEECHAT_RC_OK
 end
 
@@ -64,7 +64,7 @@ def my_signal_cb(data, signal, signal_type)
   return Weechat::WEECHAT_RC_OK
 end
 
-def copywin_cmd(data, buffer, argv)
+def launch_url_hinter(data, buffer, argv)
   UrlList.clear
 
   own_lines = Weechat.hdata_pointer(Weechat.hdata_get('buffer'), Weechat.current_buffer, 'own_lines')
