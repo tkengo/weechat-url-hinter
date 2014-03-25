@@ -70,9 +70,7 @@ def launch_url_hinter(data, buffer, argv)
   own_lines = Weechat.hdata_pointer(Weechat.hdata_get('buffer'), Weechat.current_buffer, 'own_lines')
   line = Weechat.hdata_pointer(Weechat.hdata_get('lines'), own_lines, 'first_line')
 
-  line_count = Weechat.hdata_integer(Weechat.hdata_get('lines'), own_lines, 'lines_count')
-  max_lines  = Weechat.hdata_integer(Weechat.hdata_get('window'), Weechat.current_window, 'win_chat_height')
-  continue_count = line_count - max_lines
+  continue_count = get_continue_count(buffer)
 
   index = 0
   while true
@@ -102,4 +100,12 @@ end
 
 def hook_process_cb(data, command, rc, stdout, stderr)
   return Weechat::WEECHAT_RC_OK
+end
+
+def get_continue_count(buffer)
+  own_lines = Weechat.hdata_pointer(Weechat.hdata_get('buffer'), buffer, 'own_lines')
+
+  line_count = Weechat.hdata_integer(Weechat.hdata_get('lines'), own_lines, 'lines_count')
+  max_lines  = Weechat.hdata_integer(Weechat.hdata_get('window'), Weechat.current_window, 'win_chat_height')
+  line_count - max_lines
 end
