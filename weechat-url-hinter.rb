@@ -78,7 +78,6 @@ def launch_url_hinter(data, buffer, argv)
   while true
     data = Weechat.hdata_pointer(Weechat.hdata_get('line'), line, 'data')
     message = Weechat.hdata_string(Weechat.hdata_get('line_data'), data, 'message')
-    # Weechat.print('', "#{Weechat.hdata_char(Weechat.hdata_get('line_data'), data, 'displayed').to_s}:#{message}")
     displayed = Weechat.hdata_char(Weechat.hdata_get('line_data'), data, 'displayed').to_s == '1'
     UrlList.push_message(data, message.dup)
     new_message = Weechat.string_remove_color(message, '')
