@@ -82,7 +82,7 @@ def copywin_cmd(data, buffer, argv)
     displayed = Weechat.hdata_char(Weechat.hdata_get('line_data'), data, 'displayed').to_s == '1'
     UrlList.push_message(data, message.dup)
     new_message = Weechat.string_remove_color(message, '')
-    if new_message =~ /(https?:\/\/[^ \(\)]*)/
+    if new_message =~ /(https?:\/\/[^ \(\)\r\n]*)/
       if index >= continue_count
         url = $1
         new_message = new_message.split(url)
