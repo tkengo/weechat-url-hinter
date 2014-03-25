@@ -43,7 +43,7 @@ class UrlList
 end
 
 def weechat_init
-  Weechat.register("weechat-emoji", "Kengo Tateish", "0.1", "MIT License", "Weechat print emoji", "", "")
+  Weechat.register('weechat-url-hinter', 'Kengo Tateish', '0.1', 'MIT License', 'Open an url in the weechat buffer to type a hint', '', '')
   Weechat.hook_command('url_hinter', 'description', 'args', 'args_description', '', 'copywin_cmd', '');
   return Weechat::WEECHAT_RC_OK
 end
