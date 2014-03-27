@@ -48,7 +48,7 @@ end
 def weechat_init
   Weechat.register('weechat-url-hinter', 'Kengo Tateish', '0.1', 'MIT License', 'Open an url in the weechat buffer to type a hint', '', '')
   Weechat.hook_command('url_hinter', 'description', 'args', 'args_description', '', 'launch_url_hinter', '');
-  return Weechat::WEECHAT_RC_OK
+  Weechat::WEECHAT_RC_OK
 end
 
 def my_signal_cb(data, signal, signal_type)
@@ -63,29 +63,31 @@ def my_signal_cb(data, signal, signal_type)
     Weechat.hook_process(cmd, 10000, "hook_process_cb", "")
   end
 
-  return Weechat::WEECHAT_RC_OK
+  Weechat::WEECHAT_RC_OK
 end
 
+#
+# Launch url-hinter.
+#
+# Type '/url_hinter' on the input buffer of Weechat, and then this plugin searches
+# strings like 'http://...' or 'https://...' in the current buffer and highlights it.
+#
 def launch_url_hinter(data, buffer_pointer, argv)
-  clear_hints
+  clear_hints and return Weechat::WEECHAT_RC_OK if UrlList.messages.any?
 
   buffer = Buffer.new(buffer_pointer)
-  return Weechat::WEECHAT_RC_OK unless buffer.has_url?
+  return Weechat::WEECHAT_RC_OK unless buffer.has_url_in_display?
 
-  continue_count = buffer.own_lines.count - Window.current.chat_height
-
-  index = 0
-  buffer.own_lines.each do |line|
+  buffer.own_lines.reverse_each do |line|
     UrlList.push_message(line.data_pointer, line.message.dup)
     new_message = Weechat.string_remove_color(line.message, '')
-    if line.has_url?  && index >= continue_count
+    if line.has_url?
       line.urls.each do |url|
-        new_message.gsub!(url, "#{Weechat.color("yellow")}[#{UrlList.add(url).to_s}]#{Weechat.color("red") + url[3..-1].to_s + Weechat.color("blue")}")
+        hint_key = UrlList.add(url).to_s
+        new_message.gsub!(url, "#{Color.yellow}[#{hint_key}]#{Color.red + url[3..-1].to_s + Color.blue}")
       end
     end
-    line.message = "#{Weechat.color('blue')}#{new_message}#{Weechat.color('reset')}"
-
-    index += 1 if line.displayed?
+    line.message = Color.blue + new_message + Color.reset
   end
 
   UrlList.hook_pointer = Weechat.hook_signal('input_text_changed', 'my_signal_cb', "")
@@ -108,9 +110,20 @@ def hook_process_cb(data, command, rc, stdout, stderr)
   return Weechat::WEECHAT_RC_OK
 end
 
-#----------------------------------
-# Wrapper of weechat hdata objects.
-#----------------------------------
+#----------------------------
+# Wrapper of weechat objects.
+#----------------------------
+
+#
+# Wrapper of weechat color object.
+#
+class Color
+  class << self
+    def method_missing(method_name)
+      Weechat.color(method_name.to_s)
+    end
+  end
+end
 
 #
 # Wrapper of weechat hdata window.
@@ -141,11 +154,23 @@ class Buffer
 
   def own_lines
     own_lines_pointer = Weechat.hdata_pointer(Weechat.hdata_get('buffer'), @pointer, 'own_lines')
-    Lines.new(own_lines_pointer)
+    @own_lines ||= Lines.new(own_lines_pointer)
   end
 
-  def has_url?
-    !own_lines.find(&:has_url?).nil?
+  def has_url_in_display?
+    window_height = Window.current.chat_height
+
+    result = false
+    index = 0
+
+    own_lines.reverse_each do |line|
+      result = true and break if line.has_url?
+
+      index += 1 if line.displayed?
+      break if index >= window_height
+    end
+
+    result
   end
 end
 
@@ -164,6 +189,11 @@ class Lines
     Line.new(first_line_pointer)
   end
 
+  def last_line
+    last_line_pointer = Weechat.hdata_pointer(Weechat.hdata_get('lines'), @pointer, 'last_line')
+    Line.new(last_line_pointer)
+  end
+
   def count
     Weechat.hdata_integer(Weechat.hdata_get('lines'), @pointer, 'lines_count')
   end
@@ -174,6 +204,15 @@ class Lines
     while true
       yield(line)
       break unless line = line.next
+    end
+  end
+
+  def reverse_each
+    line = last_line
+
+    while true
+      yield(line)
+      break unless line = line.prev
     end
   end
 end
@@ -200,6 +239,11 @@ class Line
   def next
     next_line_pointer = Weechat.hdata_pointer(Weechat.hdata_get('line'), @pointer, 'next_line')
     Line.new(next_line_pointer) unless next_line_pointer.to_s.empty?
+  end
+
+  def prev
+    prev_line_pointer = Weechat.hdata_pointer(Weechat.hdata_get('line'), @pointer, 'prev_line')
+    Line.new(prev_line_pointer) unless prev_line_pointer.to_s.empty?
   end
 
   def displayed?
