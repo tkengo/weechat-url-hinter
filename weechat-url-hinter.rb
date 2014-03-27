@@ -51,7 +51,7 @@ def weechat_init
   Weechat::WEECHAT_RC_OK
 end
 
-def my_signal_cb(data, signal, signal_type)
+def open_hint_url(data, signal, signal_type)
   input_key = Weechat.buffer_get_string(Weechat.current_buffer, 'input')
 
   if url = UrlList.get_by(input_key)
@@ -90,7 +90,7 @@ def launch_url_hinter(data, buffer_pointer, argv)
     line.message = Color.blue + new_message + Color.reset
   end
 
-  UrlList.hook_pointer = Weechat.hook_signal('input_text_changed', 'my_signal_cb', "")
+  UrlList.hook_pointer = Weechat.hook_signal('input_text_changed', 'open_hint_url', '')
 
   Weechat::WEECHAT_RC_OK
 end
