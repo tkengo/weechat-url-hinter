@@ -45,12 +45,10 @@ def launch_url_hinter(data, buffer_pointer, argv)
   messages = {}
   buffer.own_lines.each do |line|
     messages[line.data_pointer] = line.message.dup
-    new_message = Weechat.string_remove_color(line.message, '')
-    if line.has_url?
-      line.urls.each do |url|
-        hint_key = "[#{Hint.instance.add(url)}]"
-        new_message.gsub!(url, Color.yellow + hint_key + Color.red + url[hint_key.length..-1].to_s + Color.blue)
-      end
+    new_message = line.remove_color_message
+    line.urls.each do |url|
+      hint_key = "[#{Hint.instance.add(url)}]"
+      new_message.gsub!(url, Color.yellow + hint_key + Color.red + url[hint_key.length..-1].to_s + Color.blue)
     end
     line.message = Color.blue + new_message + Color.reset
   end
@@ -249,6 +247,10 @@ class Line
     Weechat.hdata_update(Weechat.hdata_get('line_data'), @data_pointer, { 'message' => new_message })
   end
 
+  def remove_color_message
+    Weechat.string_remove_color(message.dup, '')
+  end
+
   def next
     next_line_pointer = Weechat.hdata_pointer(Weechat.hdata_get('line'), @pointer, 'next_line')
     Line.new(next_line_pointer) unless next_line_pointer.to_s.empty?
@@ -264,10 +266,10 @@ class Line
   end
 
   def has_url?
-    !/https?:\/\/[^ \(\)\r\n]*/.match(message).nil?
+    !/https?:\/\/[^ \(\)\r\n]*/.match(remove_color_message).nil?
   end
 
   def urls
-    message.scan(/https?:\/\/[^ \(\)\r\n]*/).uniq
+    remove_color_message.scan(/https?:\/\/[^ \(\)\r\n]*/).uniq
   end
 end
