@@ -1,46 +1,6 @@
 # coding: utf-8
 
-class UrlList
-  HINT_KEYS = 'jfhkgyuiopqwertnmzxcvblasd'
-  @@urls = {}
-  @@messages = {}
-  @@hint_key_index = 0
-
-  class << self
-    attr_accessor :hook_pointer
-
-    def clear
-      @@urls = {}
-      @@messages = {}
-      @@hint_key_index = 0
-    end
-
-    def add(url)
-      hint_key = HINT_KEYS[@@hint_key_index]
-      @@urls[hint_key] = url
-      @@hint_key_index += 1
-      hint_key
-    end
-
-    def push_message(pointer, message)
-      @@messages[pointer] = message
-    end
-
-    def messages
-      @@messages
-    end
-
-    def get_by(key)
-      if @@urls.has_key?(key)
-        @@urls[key]
-      end
-    end
-
-    def has_url?
-      @@urls.any?
-    end
-  end
-end
+require 'singleton'
 
 #
 # Register url-hinter plugin to weechat and do initialization.
@@ -51,16 +11,18 @@ def weechat_init
   Weechat::WEECHAT_RC_OK
 end
 
-def open_hint_url(data, signal, signal_type)
-  input_key = Weechat.buffer_get_string(Weechat.current_buffer, 'input')
+#
+# Callback method that invoked when input text in buffer was changed.
+# Search url by the input text from Hint. If a url is found, open it.
+#
+def open_hint_url(data, signal, buffer_pointer)
+  buffer = Buffer.new(buffer_pointer)
 
-  if url = UrlList.get_by(input_key)
-    clear_hints
-    Weechat.unhook(UrlList.hook_pointer)
-    Weechat.buffer_set(Weechat.current_buffer, 'input', '')
+  if url = Hint.instance.get_by(buffer.input_text)
+    reset_hint_mode
+    buffer.input_text = ''
 
-    cmd = "open #{url}"
-    Weechat.hook_process(cmd, 10000, "hook_process_cb", "")
+    Weechat.hook_process("open #{url}", 10000, '', '')
   end
 
   Weechat::WEECHAT_RC_OK
@@ -73,41 +35,97 @@ end
 # strings like 'http://...' or 'https://...' in the current buffer and highlights it.
 #
 def launch_url_hinter(data, buffer_pointer, argv)
-  clear_hints and return Weechat::WEECHAT_RC_OK if UrlList.messages.any?
-
   buffer = Buffer.new(buffer_pointer)
+
+  reset_hint_mode and return Weechat::WEECHAT_RC_OK if Hint.instance.any?
   return Weechat::WEECHAT_RC_OK unless buffer.has_url_in_display?
 
-  buffer.own_lines.reverse_each do |line|
-    UrlList.push_message(line.data_pointer, line.message.dup)
+  Hint.instance.set_target(buffer)
+
+  messages = {}
+  buffer.own_lines.each do |line|
+    messages[line.data_pointer] = line.message.dup
     new_message = Weechat.string_remove_color(line.message, '')
     if line.has_url?
       line.urls.each do |url|
-        hint_key = UrlList.add(url).to_s
-        new_message.gsub!(url, "#{Color.yellow}[#{hint_key}]#{Color.red + url[3..-1].to_s + Color.blue}")
+        hint_key = "[#{Hint.instance.add(url)}]"
+        new_message.gsub!(url, Color.yellow + hint_key + Color.red + url[hint_key.length..-1].to_s + Color.blue)
       end
     end
     line.message = Color.blue + new_message + Color.reset
   end
 
-  UrlList.hook_pointer = Weechat.hook_signal('input_text_changed', 'open_hint_url', '')
-
+  GlobalResource.messages = messages
+  GlobalResource.hook_pointer = Weechat.hook_signal('input_text_changed', 'open_hint_url', '')
   Weechat::WEECHAT_RC_OK
 end
 
 #
-# Clear hints.
+# Clear hints and reset hook.
 #
-def clear_hints
-  UrlList.messages.each {|pointer, message| Weechat.hdata_update(Weechat.hdata_get('line_data'), pointer, { 'message' => message }) }
-  UrlList.clear
+def reset_hint_mode
+  Hint.instance.clear
+  GlobalResource.messages.each {|pointer, message| Weechat.hdata_update(Weechat.hdata_get('line_data'), pointer, { 'message' => message }) }
+  Weechat.unhook(GlobalResource.hook_pointer)
 end
 
-#
-# Dummy hook callback.
-#
-def hook_process_cb(data, command, rc, stdout, stderr)
-  return Weechat::WEECHAT_RC_OK
+#----------------------------
+# Custome classes
+#----------------------------
+
+HINT_KEYS = 'jfhkgyuiopqwertnmzxcvblasd'
+
+class Hint
+  include Singleton
+
+  def initialize
+    clear
+  end
+
+  def set_target(buffer)
+    @buffer = buffer
+    @url_count = @buffer.url_count
+  end
+
+  def clear
+    @urls = {}
+    @hint_key_index = 0
+  end
+
+  def any?
+    @urls.any?
+  end
+
+  def add(url)
+    hint_key = next_hint_key
+    @urls[hint_key] = url
+    hint_key
+  end
+
+  def get_by(key)
+    @urls[key] if @urls.has_key?(key)
+  end
+
+  private
+
+  def next_hint_key
+    if @url_count > HINT_KEYS.length
+      key1 = HINT_KEYS[@hint_key_index / HINT_KEYS.length]
+      key2 = HINT_KEYS[@hint_key_index % HINT_KEYS.length]
+      hint_key = key1 + key2
+    else
+      hint_key = HINT_KEYS[@hint_key_index]
+    end
+
+    @hint_key_index += 1
+    hint_key
+  end
+end
+
+class GlobalResource
+  class << self
+    attr_accessor :hook_pointer, :messages
+  end
 end
 
 #----------------------------
@@ -157,20 +175,20 @@ class Buffer
     @own_lines ||= Lines.new(own_lines_pointer)
   end
 
+  def input_text
+    Weechat.buffer_get_string(@pointer, 'input')
+  end
+
+  def input_text=(text)
+    Weechat.buffer_set(@pointer, 'input', text)
+  end
+
+  def url_count
+    own_lines.inject(0){|result, line| result + line.urls.count }
+  end
+
   def has_url_in_display?
-    window_height = Window.current.chat_height
-
-    result = false
-    index = 0
-
-    own_lines.reverse_each do |line|
-      result = true and break if line.has_url?
-
-      index += 1 if line.displayed?
-      break if index >= window_height
-    end
-
-    result
+    !own_lines.find(&:has_url?).nil?
   end
 end
 
@@ -199,20 +217,15 @@ class Lines
   end
 
   def each
-    line = first_line
+    window_height = Window.current.chat_height
+    line          = last_line
+    index         = 0
 
     while true
       yield(line)
-      break unless line = line.next
-    end
-  end
 
-  def reverse_each
-    line = last_line
-
-    while true
-      yield(line)
-      break unless line = line.prev
+      index += 1 if line.displayed?
+      break if !(line = line.prev) || index >= window_height
     end
   end
 end
