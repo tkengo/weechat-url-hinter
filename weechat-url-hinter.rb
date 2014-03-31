@@ -1,5 +1,3 @@
-# coding: utf-8
-
 require 'singleton'
 
 #
@@ -266,10 +264,10 @@ class Line
   end
 
   def has_url?
-    !/https?:\/\/[^ \(\)\r\n]*/.match(remove_color_message).nil?
+    !/https?:\/\/[^ 　\(\)\r\n]*/.match(remove_color_message).nil?
   end
 
   def urls
-    remove_color_message.scan(/https?:\/\/[^ \(\)\r\n]*/).uniq
+    remove_color_message.scan(/https?:\/\/[^ 　\(\)\r\n]*/).uniq
   end
 end
