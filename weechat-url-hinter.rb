@@ -46,7 +46,7 @@ def open_hint_url(data, signal, buffer_pointer)
     buffer.input_text = ''
 
     unless GlobalResource.continuous
-      Hint.instance.open_all_url
+      Hint.instance.open_all_reserved_url
       reset_hint_mode
     end
   end
@@ -56,7 +56,7 @@ end
 
 def key_pressed_callback(data, signal, key)
   if key == "\x01M" && Hint.instance.any?
-    Hint.instance.open_all_url
+    Hint.instance.open_all_reserved_url
     reset_hint_mode
   end
 
@@ -147,7 +147,7 @@ class Hint
     @open_target_urls << @urls.delete(key)
   end
 
-  def open_all_url
+  def open_all_reserved_url
     Weechat.hook_process("open #{@open_target_urls.join(' ')}", 10000, '', '') if @open_target_urls.any?
   end
 
