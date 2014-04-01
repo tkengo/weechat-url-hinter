@@ -1,11 +1,35 @@
+#
+# Copyright (c) 2014 Kengo Tateishi <embrace.ddd.flake.peace@gmail.com>
+# https://github.com/tkengo/weechat-url-hinter
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# ---------------------------------------------------------------------
+#
+# Url hinter is a plugin that open a url in weehcat buffer without
+# touching mouse.
+#
+# Usage
+# 1. Type '/url_hinter' command on the input buffer of Weechat.
+# 2. Then, this plugin searches url strings such as 'http://...' or
+#    'https://...'
+# 3. If urls are found, they are highlighted and give hint key to
+#    the url.
+# 4. When you type a hint key, open the url related to hint key
+#    in your default browser.
+#
+
 require 'singleton'
 
 #
 # Register url-hinter plugin to weechat and do initialization.
 #
 def weechat_init
-  Weechat.register('weechat-url-hinter', 'Kengo Tateish', '0.1', 'MIT License', 'Open an url in the weechat buffer to type a hint', '', '')
-  Weechat.hook_command('url_hinter', 'description', 'args', 'args_description', '', 'launch_url_hinter', '');
+  Weechat.register('url_hinter', 'Kengo Tateish', '0.1', 'GPL3', 'Open an url in the weechat buffer to type a hint', '', '')
+  Weechat.hook_command('url_hinter', 'Search url strings, and highlight them, and if you type a hint key, open the url related to hint key.', 'continuous', 'continuous | Continue hint mode even if selected url is opend.', '', 'launch_url_hinter', '');
   Weechat::WEECHAT_RC_OK
 end
 
