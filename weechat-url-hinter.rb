@@ -39,12 +39,16 @@ end
 #
 def open_hint_url(data, signal, buffer_pointer)
   buffer = Buffer.new(buffer_pointer)
+  text = buffer.input_text
 
-  if url = Hint.instance.get_by(buffer.input_text)
-    reset_hint_mode
+  if Hint.instance.has_key?(text)
+    Hint.instance.reserve(text)
     buffer.input_text = ''
 
-    Weechat.hook_process("open #{url}", 10000, '', '')
+    unless GlobalResource.continuous
+      Hint.instance.open_all_url
+      reset_hint_mode
+    end
   end
 
   Weechat::WEECHAT_RC_OK
@@ -59,7 +63,12 @@ end
 def launch_url_hinter(data, buffer_pointer, argv)
   buffer = Buffer.new(buffer_pointer)
 
-  reset_hint_mode and return Weechat::WEECHAT_RC_OK if Hint.instance.any?
+  if Hint.instance.any?
+    Hint.instance.open_all_url
+    reset_hint_mode
+    return Weechat::WEECHAT_RC_OK
+  end
+
   return Weechat::WEECHAT_RC_OK unless buffer.has_url_in_display?
 
   Hint.instance.set_target(buffer)
@@ -69,13 +78,14 @@ def launch_url_hinter(data, buffer_pointer, argv)
     messages[line.data_pointer] = line.message.dup
     new_message = line.remove_color_message
     line.urls.each do |url|
-      hint_key = "[#{Hint.instance.add(url)}]"
+      hint_key = "[#{Hint.instance.add(url, line)}]"
       new_message.gsub!(url, Color.yellow + hint_key + Color.red + url[hint_key.length..-1].to_s + Color.blue)
     end
     line.message = Color.blue + new_message + Color.reset
   end
 
   GlobalResource.messages = messages
+  GlobalResource.continuous = argv == 'continuous'
   GlobalResource.hook_pointer = Weechat.hook_signal('input_text_changed', 'open_hint_url', '')
   Weechat::WEECHAT_RC_OK
 end
@@ -109,6 +119,8 @@ class Hint
 
   def clear
     @urls = {}
+    @open_target_urls = []
+    @lines = {}
     @hint_key_index = 0
   end
 
@@ -116,14 +128,25 @@ class Hint
     @urls.any?
   end
 
-  def add(url)
+  def add(url, line)
     hint_key = next_hint_key
     @urls[hint_key] = url
+    @lines[hint_key] = line
     hint_key
   end
 
-  def get_by(key)
-    @urls[key] if @urls.has_key?(key)
+  def reserve(key)
+    line = @lines.delete(key)
+    line.message = line.message(hdata: true).gsub("[#{key}]", "[#{'*' * key.length}]")
+    @open_target_urls << @urls.delete(key)
+  end
+
+  def open_all_url
+    Weechat.hook_process("open #{@open_target_urls.join(' ')}", 10000, '', '') if @open_target_urls.any?
+  end
+
+  def has_key?(key)
+    @urls.has_key?(key)
   end
 
   private
@@ -144,7 +167,7 @@ end
 
 class GlobalResource
   class << self
-    attr_accessor :hook_pointer, :messages
+    attr_accessor :hook_pointer, :messages, :continuous
   end
 end
 
@@ -261,8 +284,12 @@ class Line
     @data_pointer = Weechat.hdata_pointer(Weechat.hdata_get('line'), @pointer, 'data')
   end
 
-  def message
-    @message ||= Weechat.hdata_string(Weechat.hdata_get('line_data'), @data_pointer, 'message').to_s
+  def message(options = {})
+    if options[:hdata]
+      @message = Weechat.hdata_string(Weechat.hdata_get('line_data'), @data_pointer, 'message').to_s
+    else
+      @message ||= Weechat.hdata_string(Weechat.hdata_get('line_data'), @data_pointer, 'message').to_s
+    end
   end
 
   def message=(new_message)
