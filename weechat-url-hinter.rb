@@ -9,8 +9,10 @@
 #
 # ---------------------------------------------------------------------
 #
-# Url hinter is a plugin that open a url in weehcat buffer without
+# Url hinter is a plugin that open a url on weehcat buffer without
 # touching mouse.
+#
+# This plugin is available in Mac OSX.
 #
 # Usage
 # 1. Type '/url_hinter' command on the input buffer of Weechat.
@@ -29,7 +31,15 @@ require 'singleton'
 #
 def weechat_init
   Weechat.register('url_hinter', 'Kengo Tateish', '0.1', 'GPL3', 'Open an url in the weechat buffer to type a hint', '', '')
-  Weechat.hook_command('url_hinter', 'Search url strings, and highlight them, and if you type a hint key, open the url related to hint key.', 'continuous', 'continuous | Continue hint mode even if selected url is opend.', '', 'launch_url_hinter', '');
+  Weechat.hook_command(
+    'url_hinter',
+    'Search url strings, and highlight them, and if you type a hint key, open the url related to hint key.',
+    'continuous',
+    'continuous | Continue hint mode even if selected url is opend.',
+    '',
+    'launch_url_hinter',
+    ''
+  );
   Weechat::WEECHAT_RC_OK
 end
 
