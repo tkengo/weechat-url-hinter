@@ -34,8 +34,9 @@ def weechat_init
   Weechat.hook_command(
     'url_hinter',
     'Search url strings, and highlight them, and if you type a hint key, open the url related to hint key.',
-    'continuous',
-    'continuous | Continue hint mode even if selected url is opend.',
+    'continuous|first',
+    "continuous | Continue hint mode even if selected url is opend.\n" +
+    'first      | Open a url that appears on the current buffer.',
     '',
     'launch_url_hinter',
     ''
@@ -88,6 +89,7 @@ def launch_url_hinter(data, buffer_pointer, argv)
 
   reset_hint_mode and return Weechat::WEECHAT_RC_OK if Hint.instance.any?
   return Weechat::WEECHAT_RC_OK unless buffer.has_url_in_display?
+  open_url(buffer.first_url) and return Weechat::WEECHAT_RC_OK if argv == 'first'
 
   Hint.instance.set_target(buffer)
 
@@ -117,6 +119,13 @@ def reset_hint_mode
   GlobalResource.messages.each {|pointer, message| Weechat.hdata_update(Weechat.hdata_get('line_data'), pointer, { 'message' => message }) }
   Weechat.unhook(GlobalResource.hook_pointer1)
   Weechat.unhook(GlobalResource.hook_pointer2)
+end
+
+#
+# open specified url
+#
+def open_url(url)
+  Weechat.hook_process("open #{url}", 10000, '', '')
 end
 
 #----------------------------
@@ -252,6 +261,10 @@ class Buffer
 
   def has_url_in_display?
     !own_lines.find(&:has_url?).nil?
+  end
+
+  def first_url
+    own_lines.find(&:has_url?).urls.last
   end
 end
 
