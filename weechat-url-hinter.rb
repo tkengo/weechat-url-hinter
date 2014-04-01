@@ -36,7 +36,7 @@ def weechat_init
     'Search url strings, and highlight them, and if you type a hint key, open the url related to hint key.',
     'continuous|first',
     "continuous | Continue hint mode even if selected url is opend.\n" +
-    'first      | Open a url that appears on the current buffer.',
+    'first      | Open a url that appears first on the current buffer.',
     '',
     'launch_url_hinter',
     ''
