@@ -54,6 +54,15 @@ def open_hint_url(data, signal, buffer_pointer)
   Weechat::WEECHAT_RC_OK
 end
 
+def key_pressed_callback(data, signal, key)
+  if key == "\x01M" && Hint.instance.any?
+    Hint.instance.open_all_url
+    reset_hint_mode
+  end
+
+  Weechat::WEECHAT_RC_OK
+end
+
 #
 # Launch url-hinter.
 #
@@ -63,12 +72,7 @@ end
 def launch_url_hinter(data, buffer_pointer, argv)
   buffer = Buffer.new(buffer_pointer)
 
-  if Hint.instance.any?
-    Hint.instance.open_all_url
-    reset_hint_mode
-    return Weechat::WEECHAT_RC_OK
-  end
-
+  reset_hint_mode and return Weechat::WEECHAT_RC_OK if Hint.instance.any?
   return Weechat::WEECHAT_RC_OK unless buffer.has_url_in_display?
 
   Hint.instance.set_target(buffer)
@@ -86,7 +90,8 @@ def launch_url_hinter(data, buffer_pointer, argv)
 
   GlobalResource.messages = messages
   GlobalResource.continuous = argv == 'continuous'
-  GlobalResource.hook_pointer = Weechat.hook_signal('input_text_changed', 'open_hint_url', '')
+  GlobalResource.hook_pointer1 = Weechat.hook_signal('input_text_changed', 'open_hint_url', '')
+  GlobalResource.hook_pointer2 = Weechat.hook_signal('key_pressed', 'key_pressed_callback', '')
   Weechat::WEECHAT_RC_OK
 end
 
@@ -96,7 +101,8 @@ end
 def reset_hint_mode
   Hint.instance.clear
   GlobalResource.messages.each {|pointer, message| Weechat.hdata_update(Weechat.hdata_get('line_data'), pointer, { 'message' => message }) }
-  Weechat.unhook(GlobalResource.hook_pointer)
+  Weechat.unhook(GlobalResource.hook_pointer1)
+  Weechat.unhook(GlobalResource.hook_pointer2)
 end
 
 #----------------------------
@@ -167,7 +173,7 @@ end
 
 class GlobalResource
   class << self
-    attr_accessor :hook_pointer, :messages, :continuous
+    attr_accessor :hook_pointer1, :hook_pointer2, :messages, :continuous
   end
 end
 
