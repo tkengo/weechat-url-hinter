@@ -54,6 +54,10 @@ def open_hint_url(data, signal, buffer_pointer)
   Weechat::WEECHAT_RC_OK
 end
 
+#
+# Callback method that invoked when key was pressed in buffer.
+# If enter key is pressed, open all reserved urls.
+#
 def key_pressed_callback(data, signal, key)
   if key == "\x01M" && Hint.instance.any?
     Hint.instance.open_all_reserved_url
