@@ -12,7 +12,7 @@
 # Url hinter is a plugin that open a url on weehcat buffer without
 # touching mouse.
 #
-# This plugin is available in Mac OSX.
+# This plugin is available in only Mac OSX.
 #
 # Usage
 # 1. Type '/url_hinter' command on the input buffer of Weechat.
