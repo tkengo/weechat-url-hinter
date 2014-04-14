@@ -23,6 +23,9 @@
 # 4. When you type a hint key, open the url related to hint key
 #    in your default browser.
 #
+# see also
+# https://github.com/tkengo/weechat-url-hinter/blob/master/README.md
+#
 
 require 'singleton'
 
